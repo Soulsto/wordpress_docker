@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  wordpress_db:
+    image: mysql:8.0
+    container_name: wordpress_db
+    restart: always
+    environment:
+      # Utilisation des variables du fichier .env
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      # Utilisation des secrets pour les mots de passe
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    networks:
+      - backend
+    volumes:
+      - db_data:/var/lib/mysql
+    secrets:
+      - mysql_password
+      - mysql_root_password
+
+  wordpress:
+    depends_on:
+      - wordpress_db
+    image: wordpress:latest
+    container_name: wordpress
+    restart: always
+    ports:
+      # Port exposé pour accéder au site WordPress depuis l'extérieur
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: wordpress_db:3306
+      # Utilisation des variables du fichier .env
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      # Utilisation du secret pour le mot de passe
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/mysql_password
+    networks:
+      - backend
+      - frontend
+    volumes:
+      - wp_data:/var/www/html
+    secrets:
+      - mysql_password
+
+# Définition des secrets à partir des fichiers locaux
+secrets:
+  mysql_password:
+    file: ./secrets/mysql_password.txt
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  db_data:
+  wp_data:
